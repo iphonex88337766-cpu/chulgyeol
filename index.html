@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>출결이</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --sage-50:#f4f8ef; --sage-100:#e8f0e0; --sage-200:#cddcbf;
+    --sage-300:#b2c9a3; --sage-500:#87a96b; --sage-600:#6c8d54; --sage-700:#50693e;
+    --ink:#24302a; --muted:#6b7a70; --line:#e6ece1; --bg:#fff; --danger:#c0564d;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    font-feature-settings:"tnum";-webkit-tap-highlight-color:transparent}
+  button{font-family:inherit}
+
+  header{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);background:#fff;position:sticky;top:0;z-index:10}
+  header h1{flex:1;margin:0;font-size:20px;font-weight:700;color:var(--sage-700);letter-spacing:-.02em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  header h1 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--sage-500);margin-right:8px;vertical-align:middle}
+
+  .btn{padding:9px 14px;border:0;border-radius:8px;background:var(--sage-500);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+  .btn:hover{background:var(--sage-600)}
+  .btn:active{transform:scale(.98)}
+  .btn.secondary{background:#fff;color:var(--sage-700);border:1px solid var(--sage-300)}
+  .btn.secondary:hover{background:var(--sage-50)}
+  .btn.ghost{background:transparent;color:var(--muted);padding:6px 10px}
+  .btn.ghost:hover{background:var(--sage-50);color:var(--sage-700)}
+  .btn.outline{background:#fff;color:var(--muted);border:1px solid #d0d5cd}
+  .btn.outline:hover{background:#f5f6f3;color:var(--ink)}
+  .btn.danger{background:#fff;color:var(--danger);border:1px solid #e7c3bf}
+  .btn.danger:hover{background:#fbeeec}
+  .btn.sm{padding:6px 10px;font-size:12.5px}
+  .btn-icon{background:transparent;border:0;color:var(--sage-700);font-size:18px;padding:6px 10px;border-radius:8px;cursor:pointer;font-weight:600}
+  .btn-icon:hover{background:var(--sage-50)}
+
+  main{padding:16px;max-width:640px;margin:0 auto 80px}
+  .view{display:none}.view.active{display:block}
+
+  .section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 2px 12px;flex-wrap:wrap}
+  .section-title h2{margin:0;font-size:15px;color:var(--sage-700);font-weight:700}
+  .section-title .count{color:var(--muted);font-size:13px;font-weight:500;margin-left:6px}
+
+  .list{display:grid;gap:10px}
+  .list-card{display:flex;align-items:center;gap:10px;padding:14px;border:1px solid var(--line);border-radius:12px;background:#fff;transition:background .15s,border-color .15s}
+  .list-card .info{flex:1;min-width:0}
+  .list-card .name{font-weight:700;font-size:15px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .list-card .meta{font-size:12px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .list-card .notes{font-size:12px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-style:italic}
+  .list-card .actions{display:flex;gap:6px;flex-shrink:0;align-items:center}
+
+  .chev{color:var(--sage-300);font-size:18px;flex-shrink:0;margin-left:2px;padding:4px;border-radius:6px;cursor:pointer;user-select:none}
+  .chev:hover{color:var(--sage-600);background:var(--sage-50)}
+
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em;margin-right:4px;vertical-align:middle}
+  .tag.fixed{background:var(--sage-100);color:var(--sage-700)}
+  .tag.ongoing{background:var(--sage-500);color:#fff}
+
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+  .pill.done{background:var(--sage-500);color:#fff}
+  .pill.todo{background:#eef1ec;color:var(--muted)}
+  .pill.partial{background:var(--sage-100);color:var(--sage-700)}
+  .pill.cancelled{background:#efe8e7;color:#9a6963}
+  .pill.makeup{background:#fdf1d8;color:#8d6b1c}
+  .meta.note{color:var(--sage-700);font-style:normal}
+
+  .empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:14px;border:1px dashed var(--line);border-radius:12px;background:var(--sage-50)}
+
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:2px 0 14px;overflow-x:auto}
+  .tabs button{padding:10px 16px;border:0;border-bottom:2px solid transparent;background:transparent;cursor:pointer;font-size:14px;color:var(--muted);font-weight:500;white-space:nowrap}
+  .tabs button.active{color:var(--sage-700);border-bottom-color:var(--sage-500);font-weight:700}
+  .tab-panel{display:none}.tab-panel.active{display:block}
+
+  .status{font-size:12px;color:var(--muted);padding:0 18px 8px}
+  .status .err{color:var(--danger)}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--sage-700);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:100;max-width:calc(100% - 40px);text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+
+  dialog{border:0;border-radius:14px;padding:0;background:#fff;box-shadow:0 20px 60px rgba(36,48,42,.18);max-width:480px;width:calc(100% - 32px)}
+  dialog::backdrop{background:rgba(36,48,42,.4)}
+  .dlg-head{padding:16px 20px;border-bottom:1px solid var(--line);font-weight:700;color:var(--sage-700);font-size:15px}
+  .dlg-body{padding:18px 20px;display:grid;gap:12px;max-height:72vh;overflow:auto}
+  .dlg-foot{padding:12px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+  label.fld{display:grid;gap:5px;font-size:13px;color:var(--muted)}
+  .fld-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  input[type=text],input[type=number],input[type=date],input[type=time],textarea,select{padding:11px 12px;border:1px solid var(--line);border-radius:8px;font-size:15px;font-family:inherit;background:#fff;color:var(--ink);width:100%}
+  textarea{min-height:72px;resize:vertical;font-size:14px}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--sage-500);box-shadow:0 0 0 3px var(--sage-100)}
+  .fld-label{font-size:13px;color:var(--muted);margin-bottom:5px}
+  .hint-text{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.45}
+
+  .segment{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+  .segment button{padding:8px 16px;border:0;background:transparent;cursor:pointer;font-size:13px;color:var(--muted);font-weight:600;font-family:inherit}
+  .segment button.on{background:var(--sage-500);color:#fff}
+
+  .weekday-picker{display:flex;gap:6px;flex-wrap:wrap}
+  .wd{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--muted);font-weight:600;cursor:pointer;font-family:inherit;font-size:13px}
+  .wd:hover{background:var(--sage-50);color:var(--sage-700)}
+  .wd.on{background:var(--sage-500);color:#fff;border-color:var(--sage-500)}
+  .wd.on:hover{background:var(--sage-600);border-color:var(--sage-600);color:#fff}
+
+  .toggle-group{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .toggle-group button{padding:8px 16px;border:0;background:#fff;cursor:pointer;font-size:13px;color:var(--muted);font-family:inherit;font-weight:600}
+  .toggle-group button.on.present{background:var(--sage-500);color:#fff}
+  .toggle-group button.on.absent{background:var(--danger);color:#fff}
+  .check{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+  .check input{accent-color:var(--sage-500);width:18px;height:18px}
+
+  .stats-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .stat-box{padding:14px 12px;border:1px solid var(--sage-200);border-radius:12px;background:var(--sage-50);text-align:center}
+  .stat-box .stat-label{font-size:12px;color:var(--sage-700);font-weight:600;margin-bottom:6px}
+  .stat-box .stat-value{font-size:24px;color:var(--sage-700);font-weight:700;letter-spacing:-.02em;line-height:1.1}
+  .stat-row{padding:14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  .stat-row .name{font-weight:700;font-size:15px;color:var(--ink)}
+  .stats-meta{font-size:13px;color:var(--ink);margin-top:6px}
+  .stats-meta b{color:var(--sage-700);font-weight:700}
+  .stats-bar{height:8px;background:var(--sage-50);border-radius:999px;margin-top:10px;overflow:hidden;border:1px solid var(--line)}
+  .stats-bar-fill{height:100%;background:var(--sage-500);border-radius:999px;transition:width .3s}
+  .stats-rate{font-size:12px;color:var(--muted);margin-top:6px;font-weight:600;text-align:right}
+  .stats-actions{display:flex;justify-content:flex-end;margin-top:18px}
+
+  .att-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;flex-wrap:wrap}
+  .att-row .info{flex:1;min-width:140px}
+  .att-row .controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .att-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .att-header .title{font-weight:700;color:var(--sage-700);font-size:15px}
+  .att-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+
+  @media (max-width:480px){
+    header{padding:12px 14px}
+    header h1{font-size:18px}
+    main{padding:12px}
+    .btn{padding:8px 12px}
+    .fld-row{grid-template-columns:1fr}
+    .att-row .controls{width:100%;justify-content:space-between}
+  }
+</style>
+</head>
+<body>
+<header>
+  <button class="btn-icon" id="btn-back-header" hidden aria-label="뒤로">←</button>
+  <h1 id="header-title"><span class="dot"></span>출결이</h1>
+  <button class="btn" id="btn-add-group">＋ 그룹 추가</button>
+</header>
+<div class="status" id="status"></div>
+<main>
+
+  <!-- 홈 -->
+  <section class="view active" id="view-home">
+    <div class="section-title">
+      <h2>그룹 목록<span class="count" id="group-count"></span></h2>
+    </div>
+    <div id="group-list-host"><div class="empty">불러오는 중…</div></div>
+  </section>
+
+  <!-- 그룹 워크스페이스 -->
+  <section class="view" id="view-group">
+    <div class="tabs" id="tabs">
+      <button data-tab="participants" class="active">참여자</button>
+      <button data-tab="sessions">회기</button>
+      <button data-tab="stats">통계</button>
+    </div>
+
+    <!-- 참여자 탭 -->
+    <div class="tab-panel active" id="tab-participants">
+      <div class="section-title">
+        <h2>참여자 목록<span class="count" id="participant-count"></span></h2>
+        <button class="btn" id="btn-add-participant">＋ 참여자 추가</button>
+      </div>
+      <div id="participant-list-host"><div class="empty">불러오는 중…</div></div>
+    </div>
+
+    <!-- 회기 탭 -->
+    <div class="tab-panel" id="tab-sessions">
+      <div id="sessions-list-view">
+        <div class="section-title">
+          <h2>회기 목록<span class="count" id="session-count"></span></h2>
+          <button class="btn" id="btn-add-session" hidden>＋ 회기 추가</button>
+        </div>
+        <div id="session-list-host"><div class="empty">불러오는 중…</div></div>
+      </div>
+      <div id="sessions-attendance-view" hidden>
+        <div class="att-header">
+          <button class="btn ghost" id="btn-back-to-sessions">← 회기로</button>
+          <div class="title" id="attendance-title"></div>
+        </div>
+        <div id="attendance-host"></div>
+        <div class="att-footer">
+          <button class="btn secondary" id="btn-cancel-attendance">취소</button>
+          <button class="btn" id="btn-save-attendance">저장</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 통계 탭 -->
+    <div class="tab-panel" id="tab-stats">
+      <div id="stats-host"><div class="empty">불러오는 중…</div></div>
+    </div>
+  </section>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<!-- 그룹 모달 -->
+<dialog id="dlg-group">
+  <form method="dialog" id="form-group" autocomplete="off">
+    <div class="dlg-head" id="dlg-g-title">그룹 추가</div>
+    <div class="dlg-body">
+      <label class="fld">그룹명 *<input type="text" name="name" required maxlength="80" placeholder="예: 청소년 상담반" /></label>
+      <label class="fld">담당자<input type="text" name="manager" maxlength="40" placeholder="선택 입력" /></label>
+      <div>
+        <div class="fld-label">그룹 유형 *</div>
+        <div class="segment" id="type-picker">
+          <button type="button" data-type="fixed" class="on">기간제</button>
+          <button type="button" data-type="ongoing">상시</button>
+        </div>
+        <div class="hint-text" id="type-hint">총 회기수만큼 회기가 자동 생성됩니다.</div>
+      </div>
+      <div>
+        <div class="fld-label">요일 * <span style="color:var(--muted)">(복수 선택)</span></div>
+        <div class="weekday-picker" id="weekday-picker">
+          <button type="button" class="wd" data-wd="1">월</button>
+          <button type="button" class="wd" data-wd="2">화</button>
+          <button type="button" class="wd" data-wd="3">수</button>
+          <button type="button" class="wd" data-wd="4">목</button>
+          <button type="button" class="wd" data-wd="5">금</button>
+          <button type="button" class="wd" data-wd="6">토</button>
+          <button type="button" class="wd" data-wd="0">일</button>
+        </div>
+      </div>
+      <div class="fld-row">
+        <label class="fld">시간<input type="time" name="session_time" /></label>
+        <label class="fld" id="fld-total-sessions">총 회기수 *<input type="number" name="total_sessions" min="1" max="500" value="10" /></label>
+      </div>
+      <label class="fld">시작일 *<input type="date" name="start_date" required /></label>
+    </div>
+    <div class="dlg-foot">
+      <button value="cancel" class="btn ghost" formnovalidate>취소</button>
+      <button value="save" class="btn">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 참여자 모달 -->
+<dialog id="dlg-participant">
+  <form method="dialog" id="form-participant" autocomplete="off">
+    <div class="dlg-head" id="dlg-p-title">참여자 추가</div>
+    <div class="dlg-body">
+      <label class="fld">이름 *<input type="text" name="name" required maxlength="60" /></label>
+      <div class="fld-row">
+        <label class="fld">나이<input type="number" name="age" min="0" max="120" /></label>
+        <label class="fld">학교<input type="text" name="school" maxlength="80" /></label>
+      </div>
+      <div class="fld-row">
+        <label class="fld">참여 시작일<input type="date" name="enrolled_from" /></label>
+        <label class="fld">참여 종료일<input type="date" name="enrolled_to" /></label>
+      </div>
+      <div class="hint-text">종료일을 비워두면 계속 재적 중으로 처리됩니다.</div>
+      <label class="fld">비고<textarea name="notes" maxlength="500" placeholder="선택 입력"></textarea></label>
+    </div>
+    <div class="dlg-foot">
+      <button value="cancel" class="btn ghost" formnovalidate>취소</button>
+      <button value="save" class="btn">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 회기 수동 추가 모달 -->
+<dialog id="dlg-session">
+  <form method="dialog" id="form-session" autocomplete="off">
+    <div class="dlg-head">회기 추가</div>
+    <div class="dlg-body">
+      <label class="fld">날짜 *<input type="date" name="session_date" required /></label>
+      <div class="hint-text">정규 요일이 아닌 보강·보충 회기를 수동으로 추가할 수 있습니다.</div>
+    </div>
+    <div class="dlg-foot">
+      <button value="cancel" class="btn ghost" formnovalidate>취소</button>
+      <button value="save" class="btn">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 휴강 모달 -->
+<dialog id="dlg-cancel">
+  <form method="dialog" id="form-cancel" autocomplete="off">
+    <div class="dlg-head" id="dlg-cancel-title">회기 휴강</div>
+    <div class="dlg-body">
+      <div class="hint-text" id="cancel-session-info" style="margin-top:0"></div>
+      <label class="fld">사유 *
+        <select name="reason" required>
+          <option value="holiday">공휴일</option>
+          <option value="institution">기관 사정</option>
+          <option value="agreement">합의</option>
+          <option value="other">기타</option>
+        </select>
+      </label>
+      <label class="fld">보강 날짜
+        <input type="date" name="makeup_date" />
+      </label>
+      <div class="hint-text">보강 날짜를 입력하면 해당 날짜부터 출결 체크가 가능합니다. 비워두면 종료로 처리됩니다.</div>
+      <label class="fld">메모<textarea name="memo" maxlength="300" placeholder="선택 입력"></textarea></label>
+    </div>
+    <div class="dlg-foot">
+      <button value="cancel" class="btn ghost" formnovalidate>취소</button>
+      <button value="save" class="btn">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* ===== Supabase ===== */
+const SUPABASE_URL = 'https://mskeccolgyenazbygufc.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_AaRyr5-D3nfQNR9anSL0UA_N_k13Xba';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ===== 상태 ===== */
+let groups = [];
+let participants = [];
+let sessions = [];
+let attendanceBySession = {}; // session_id → { participant_id → row }
+let currentGroupId = null;
+let currentTab = 'participants';
+let openSessionId = null;
+let attendanceDraft = {}; // participant_id → { status, parent_counseling }
+
+/* ===== 유틸 ===== */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const WD_LABEL = {0:'일',1:'월',2:'화',3:'수',4:'목',5:'금',6:'토'};
+const WD_ORDER = [1,2,3,4,5,6,0];
+const ONGOING_HORIZON_DAYS = 12*7; // 오늘 기준 12주
+const ONGOING_THRESHOLD_DAYS = 4*7; // 미래 회기가 4주 이내로 줄면 확장
+const REASON_LABEL = { holiday:'공휴일', institution:'기관 사정', agreement:'합의', other:'기타' };
+function isSessionCancelled(s){ return s && (s.status==='cancelled_closed' || s.status==='cancelled_makeup'); }
+function effectiveSessionDate(s){
+  if(!s) return null;
+  if(s.status==='cancelled_closed') return null;
+  if(s.status==='cancelled_makeup') return s.makeup_date || null;
+  return s.session_date;
+}
+
+function esc(s){return (s??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(msg,isErr=false){
+  const t=$('#toast'); t.textContent=msg;
+  t.style.background = isErr?'var(--danger)':'var(--sage-700)';
+  t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800);
+}
+function setStatus(msg,isErr=false){
+  const el=$('#status'); el.innerHTML = msg? `<span class="${isErr?'err':''}">${msg}</span>`:'';
+}
+function parseDateLocal(s){ if(!s) return null; const [y,m,d]=s.slice(0,10).split('-').map(Number); return new Date(y,m-1,d); }
+function fmtDateLocal(d){ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }
+function todayLocal(){ const n=new Date(); return new Date(n.getFullYear(),n.getMonth(),n.getDate()); }
+function todayISO(){ return fmtDateLocal(todayLocal()); }
+function fmtDateWD(s){ const d=parseDateLocal(s); if(!d) return ''; return `${fmtDateLocal(d)} (${WD_LABEL[d.getDay()]})`; }
+function fmtTime(t){ if(!t) return ''; return t.slice(0,5); }
+function fmtWeekdays(arr){ if(!arr?.length) return ''; return WD_ORDER.filter(d=>arr.includes(d)).map(d=>WD_LABEL[d]).join('·'); }
+
+function generateSessionsFixed(startDate, weekdays, total){
+  const out=[]; if(!startDate || !weekdays?.length || !total) return out;
+  const d = parseDateLocal(startDate); let guard=0;
+  while(out.length<total && guard<365*10){
+    if(weekdays.includes(d.getDay())) out.push({ session_number: out.length+1, session_date: fmtDateLocal(d) });
+    d.setDate(d.getDate()+1); guard++;
+  }
+  return out;
+}
+function generateSessionsRange(fromDate, weekdays, endDate, startingNumber){
+  const out=[]; if(!weekdays?.length) return out;
+  const end = endDate instanceof Date ? endDate : parseDateLocal(endDate);
+  const d = fromDate instanceof Date ? new Date(fromDate) : parseDateLocal(fromDate);
+  let n = startingNumber||1, guard=0;
+  while(d <= end && guard<365*10){
+    if(weekdays.includes(d.getDay())) out.push({ session_number: n++, session_date: fmtDateLocal(d) });
+    d.setDate(d.getDate()+1); guard++;
+  }
+  return out;
+}
+
+/* ===== 라우팅 (SPA) ===== */
+function navigateHome(){ location.hash = ''; }
+function navigateGroup(id){ location.hash = '#/group/'+encodeURIComponent(id); }
+function handleRoute(){
+  const m = (location.hash||'').match(/^#\/group\/(.+)$/);
+  if(m) showGroup(decodeURIComponent(m[1])); else showHome();
+}
+window.addEventListener('hashchange', handleRoute);
+
+function showHome(){
+  currentGroupId = null;
+  closeAttendanceCheck();
+  $('#view-home').classList.add('active');
+  $('#view-group').classList.remove('active');
+  $('#btn-back-header').hidden = true;
+  $('#btn-add-group').hidden = false;
+  $('#header-title').innerHTML = '<span class="dot"></span>출결이';
+  window.scrollTo({top:0});
+}
+async function showGroup(id){
+  const g = groups.find(x=>x.id===id);
+  if(!g){ navigateHome(); return; }
+  currentGroupId = id;
+  $('#view-home').classList.remove('active');
+  $('#view-group').classList.add('active');
+  $('#btn-back-header').hidden = false;
+  $('#btn-add-group').hidden = true;
+  $('#header-title').textContent = g.name;
+  switchTab(currentTab || 'participants');
+  await Promise.all([loadParticipants(), loadSessionsAndAttendance()]);
+  renderParticipants();
+  renderSessions();
+  renderStats();
+  window.scrollTo({top:0});
+}
+
+/* ===== 탭 ===== */
+$('#tabs').addEventListener('click', e=>{
+  const b = e.target.closest('button[data-tab]'); if(!b) return;
+  switchTab(b.dataset.tab);
+  if(b.dataset.tab==='sessions') closeAttendanceCheck();
+});
+function switchTab(name){
+  currentTab = name;
+  $$('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  $$('.tab-panel').forEach(p=>p.classList.toggle('active', p.id==='tab-'+name));
+  if(name==='stats') renderStats();
+}
+
+/* ===== 그룹 ===== */
+async function loadGroups(){
+  const { data, error } = await sb.from('groups').select('*').order('created_at',{ascending:false});
+  if(error){ setStatus('불러오기 실패: '+error.message,true); return; }
+  groups = data||[];
+  renderGroups();
+}
+function renderGroups(){
+  $('#group-count').textContent = groups.length? `· ${groups.length}` : '';
+  const host = $('#group-list-host');
+  if(!groups.length){
+    host.innerHTML = '<div class="empty">아직 그룹이 없습니다.<br>오른쪽 위 <b>＋ 그룹 추가</b>로 시작하세요.</div>';
+    return;
+  }
+  host.innerHTML = `<div class="list">
+    ${groups.map(g=>{
+      const isOn = g.group_type==='ongoing';
+      const tag = `<span class="tag ${isOn?'ongoing':'fixed'}">${isOn?'상시':'기간제'}</span>`;
+      const meta = [];
+      if(g.manager) meta.push('담당 · '+esc(g.manager));
+      if(g.weekdays?.length) meta.push(fmtWeekdays(g.weekdays));
+      if(g.session_time) meta.push(fmtTime(g.session_time));
+      if(!isOn && g.total_sessions) meta.push(g.total_sessions+'회기');
+      return `<div class="list-card" data-id="${esc(g.id)}">
+        <div class="info">
+          <div class="name">${tag}${esc(g.name)}</div>
+          ${meta.length? `<div class="meta">${meta.join(' · ')}</div>`:''}
+        </div>
+        <div class="actions">
+          <button class="btn sm secondary" data-act="edit" data-id="${esc(g.id)}">수정</button>
+          <button class="btn sm danger" data-act="del" data-id="${esc(g.id)}">삭제</button>
+        </div>
+        <span class="chev" data-act="open" data-id="${esc(g.id)}" role="button" aria-label="열기">›</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+  host.onclick = async (e)=>{
+    const btn = e.target.closest('[data-act]'); if(!btn) return;
+    const id = btn.dataset.id, g = groups.find(x=>x.id===id); if(!g) return;
+    if(btn.dataset.act==='open') return navigateGroup(id);
+    if(btn.dataset.act==='edit') return openGroupDialog(g);
+    if(btn.dataset.act==='del'){
+      if(!confirm(`"${g.name}" 그룹과 모든 회기·참여자·출결 기록이 삭제됩니다.\n진행할까요?`)) return;
+      const { error } = await sb.from('groups').delete().eq('id',id);
+      if(error){ toast('삭제 실패: '+error.message,true); return; }
+      toast('삭제됨'); await loadGroups();
+    }
+  };
+}
+
+function collectWeekdays(){ return $$('#weekday-picker .wd.on').map(b=>Number(b.dataset.wd)); }
+function setWeekdays(arr){ $$('#weekday-picker .wd').forEach(b=>b.classList.toggle('on', (arr||[]).includes(Number(b.dataset.wd)))); }
+$('#weekday-picker').addEventListener('click', e=>{
+  const b=e.target.closest('.wd'); if(!b) return;
+  b.classList.toggle('on');
+});
+
+function getSelectedType(){ return $('#type-picker button.on')?.dataset.type || 'fixed'; }
+function setSelectedType(t){ $$('#type-picker button').forEach(b=>b.classList.toggle('on', b.dataset.type===t)); applyTypeUI(); }
+function applyTypeUI(){
+  const t = getSelectedType();
+  $('#fld-total-sessions').style.display = (t==='fixed') ? '' : 'none';
+  $('#type-hint').textContent = t==='fixed'
+    ? '총 회기수만큼 회기가 자동 생성됩니다.'
+    : '선택한 요일에 맞춰 회기가 매주 자동 생성됩니다. 필요 시 수동 추가 가능.';
+}
+$('#type-picker').addEventListener('click', e=>{
+  const b=e.target.closest('button[data-type]'); if(!b) return;
+  setSelectedType(b.dataset.type);
+});
+
+function openGroupDialog(group){
+  const dlg=$('#dlg-group'), form=$('#form-group');
+  $('#dlg-g-title').textContent = group? '그룹 수정' : '그룹 추가';
+  form.name.value = group?.name || '';
+  form.manager.value = group?.manager || '';
+  form.session_time.value = group? fmtTime(group.session_time) : '';
+  form.total_sessions.value = group?.total_sessions || 10;
+  form.start_date.value = group? (group.start_date||'') : todayISO();
+  setWeekdays(group?.weekdays || []);
+  setSelectedType(group?.group_type || 'fixed');
+  dlg.showModal();
+  setTimeout(()=>form.name.focus(), 50);
+  form.onsubmit = async (e)=>{
+    if(e.submitter?.value !== 'save') return;
+    e.preventDefault();
+    const type = getSelectedType();
+    const weekdays = collectWeekdays().sort((a,b)=>a-b);
+    if(!form.name.value.trim()){ toast('그룹명을 입력하세요',true); return; }
+    if(!weekdays.length){ toast('요일을 하나 이상 선택하세요',true); return; }
+    if(!form.start_date.value){ toast('시작일을 입력하세요',true); return; }
+    const total = type==='fixed' ? Number(form.total_sessions.value||0) : 0;
+    if(type==='fixed' && (!total || total<1)){ toast('총 회기수를 입력하세요',true); return; }
+    const payload = {
+      name: form.name.value.trim(),
+      manager: form.manager.value.trim() || null,
+      group_type: type,
+      weekdays,
+      session_time: form.session_time.value || null,
+      total_sessions: total,
+      start_date: form.start_date.value,
+    };
+    try{
+      if(group){
+        const oldWd = (group.weekdays||[]).slice().sort((a,b)=>a-b);
+        const schedChanged =
+          (group.group_type||'fixed')!==type ||
+          JSON.stringify(oldWd)!==JSON.stringify(weekdays) ||
+          (group.start_date||'')!==payload.start_date ||
+          (type==='fixed' && (group.total_sessions||0)!==total);
+        if(schedChanged && !confirm('유형/요일/시작일/총 회기수가 변경되어 회기가 재생성됩니다.\n기존 출결 기록이 모두 삭제됩니다. 진행할까요?')) return;
+        const { error: e1 } = await sb.from('groups').update(payload).eq('id',group.id);
+        if(e1) throw e1;
+        if(schedChanged){
+          const { error: e2 } = await sb.from('sessions').delete().eq('group_id',group.id);
+          if(e2) throw e2;
+          const rows = buildInitialSessions(payload).map(r=>({group_id:group.id,...r}));
+          if(rows.length){ const { error: e3 } = await sb.from('sessions').insert(rows); if(e3) throw e3; }
+        }
+      } else {
+        const { data: created, error: e1 } = await sb.from('groups').insert(payload).select().single();
+        if(e1) throw e1;
+        const rows = buildInitialSessions(payload).map(r=>({group_id:created.id,...r}));
+        if(rows.length){ const { error: e2 } = await sb.from('sessions').insert(rows); if(e2) throw e2; }
+      }
+      dlg.close(); toast('저장됨');
+      await loadGroups();
+      if(currentGroupId){
+        const g2 = groups.find(x=>x.id===currentGroupId);
+        if(g2){
+          $('#header-title').textContent = g2.name;
+          await loadSessionsAndAttendance();
+          renderSessions();
+        }
+      }
+    }catch(err){
+      toast((group?'수정':'추가')+' 실패: '+(err.message||err),true);
+    }
+  };
+}
+
+function buildInitialSessions(payload){
+  if(payload.group_type === 'fixed'){
+    return generateSessionsFixed(payload.start_date, payload.weekdays, payload.total_sessions);
+  }
+  const start = parseDateLocal(payload.start_date);
+  const today = todayLocal();
+  const horizonBase = today > start ? today : start;
+  const horizon = new Date(horizonBase); horizon.setDate(horizon.getDate()+ONGOING_HORIZON_DAYS);
+  return generateSessionsRange(start, payload.weekdays, horizon, 1);
+}
+
+/* ===== 참여자 ===== */
+async function loadParticipants(){
+  if(!currentGroupId){ participants=[]; return; }
+  const { data, error } = await sb.from('participants')
+    .select('*').eq('group_id',currentGroupId).order('name',{ascending:true});
+  if(error){ toast('참여자 불러오기 실패: '+error.message,true); return; }
+  participants = data||[];
+}
+function renderParticipants(){
+  $('#participant-count').textContent = participants.length? `· ${participants.length}` : '';
+  const host = $('#participant-list-host');
+  if(!participants.length){
+    host.innerHTML = '<div class="empty">아직 참여자가 없습니다.<br>오른쪽 위 <b>＋ 참여자 추가</b>로 시작하세요.</div>';
+    return;
+  }
+  host.innerHTML = `<div class="list">
+    ${participants.map(p=>{
+      const bits = [];
+      if(p.age!=null) bits.push(p.age+'세');
+      if(p.school) bits.push(esc(p.school));
+      if(p.enrolled_from || p.enrolled_to){
+        bits.push(`재적 ${p.enrolled_from||''}~${p.enrolled_to||''}`);
+      }
+      return `<div class="list-card">
+        <div class="info">
+          <div class="name">${esc(p.name)}</div>
+          ${bits.length? `<div class="meta">${bits.join(' · ')}</div>`:''}
+          ${p.notes? `<div class="notes">${esc(p.notes)}</div>`:''}
+        </div>
+        <div class="actions">
+          <button class="btn sm secondary" data-act="edit" data-id="${esc(p.id)}">수정</button>
+          <button class="btn sm danger" data-act="del" data-id="${esc(p.id)}">삭제</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+  host.onclick = async (e)=>{
+    const btn = e.target.closest('button[data-act]'); if(!btn) return;
+    const id = btn.dataset.id, p = participants.find(x=>x.id===id); if(!p) return;
+    if(btn.dataset.act==='edit') return openParticipantDialog(p);
+    if(btn.dataset.act==='del'){
+      if(!confirm(`"${p.name}" 참여자를 삭제할까요?`)) return;
+      const { error } = await sb.from('participants').delete().eq('id',id);
+      if(error){ toast('삭제 실패: '+error.message,true); return; }
+      toast('삭제됨'); await loadParticipants(); renderParticipants(); renderSessions(); renderStats();
+    }
+  };
+}
+function openParticipantDialog(p){
+  if(!currentGroupId){ toast('먼저 그룹을 선택하세요',true); return; }
+  const dlg=$('#dlg-participant'), form=$('#form-participant');
+  $('#dlg-p-title').textContent = p? '참여자 수정' : '참여자 추가';
+  form.name.value   = p?.name || '';
+  form.age.value    = p?.age ?? '';
+  form.school.value = p?.school || '';
+  form.notes.value  = p?.notes || '';
+  form.enrolled_from.value = p?.enrolled_from || '';
+  form.enrolled_to.value   = p?.enrolled_to || '';
+  dlg.showModal();
+  setTimeout(()=>form.name.focus(), 50);
+  form.onsubmit = async (e)=>{
+    if(e.submitter?.value !== 'save') return;
+    e.preventDefault();
+    const payload = {
+      group_id: currentGroupId,
+      name: form.name.value.trim(),
+      age: form.age.value !== '' ? Number(form.age.value) : null,
+      school: form.school.value.trim() || null,
+      notes: form.notes.value.trim() || null,
+      enrolled_from: form.enrolled_from.value || null,
+      enrolled_to: form.enrolled_to.value || null,
+    };
+    if(!payload.name){ toast('이름을 입력하세요',true); return; }
+    if(payload.enrolled_from && payload.enrolled_to && payload.enrolled_from>payload.enrolled_to){
+      toast('참여 종료일이 시작일보다 빠릅니다',true); return;
+    }
+    const op = p
+      ? sb.from('participants').update(payload).eq('id',p.id)
+      : sb.from('participants').insert(payload);
+    const { error } = await op;
+    if(error){ toast((p?'수정':'추가')+' 실패: '+error.message,true); return; }
+    dlg.close(); toast('저장됨');
+    await loadParticipants(); renderParticipants(); renderSessions(); renderStats();
+  };
+}
+
+/* ===== 회기 / 출결 ===== */
+async function loadSessionsAndAttendance(){
+  sessions=[]; attendanceBySession={};
+  if(!currentGroupId) return;
+  const g = groups.find(x=>x.id===currentGroupId);
+
+  // 1) 회기 로딩
+  let { data, error } = await sb.from('sessions')
+    .select('*').eq('group_id',currentGroupId).order('session_date',{ascending:true});
+  if(error){ toast('회기 불러오기 실패: '+error.message,true); return; }
+  sessions = data || [];
+
+  // 2) 상시 그룹: 앞으로 회기가 부족하면 자동 확장
+  if(g?.group_type === 'ongoing'){
+    const added = await ensureOngoingHorizon(g);
+    if(added){
+      const r = await sb.from('sessions').select('*').eq('group_id',currentGroupId).order('session_date',{ascending:true});
+      if(!r.error) sessions = r.data || [];
+    }
+  }
+
+  // 3) 출결 로딩
+  if(!sessions.length) return;
+  const ids = sessions.map(s=>s.id);
+  const { data: att, error: e2 } = await sb.from('attendance').select('*').in('session_id',ids);
+  if(e2){ toast('출결 불러오기 실패: '+e2.message,true); return; }
+  for(const a of att||[]){
+    (attendanceBySession[a.session_id] ||= {})[a.participant_id] = a;
+  }
+}
+
+async function ensureOngoingHorizon(group){
+  if(group.group_type!=='ongoing' || !group.weekdays?.length) return false;
+  const today = todayLocal();
+  const horizon = new Date(today); horizon.setDate(horizon.getDate()+ONGOING_HORIZON_DAYS);
+  const threshold = new Date(today); threshold.setDate(threshold.getDate()+ONGOING_THRESHOLD_DAYS);
+  const lastDateStr = sessions.length ? sessions[sessions.length-1].session_date : null;
+  const lastDate = lastDateStr ? parseDateLocal(lastDateStr) : null;
+  if(lastDate && lastDate >= threshold) return false;
+  const fromDate = lastDate
+    ? new Date(lastDate.getTime() + 86400000)
+    : parseDateLocal(group.start_date || todayISO());
+  const maxNum = sessions.reduce((m,s)=>Math.max(m,s.session_number||0),0);
+  const rows = generateSessionsRange(fromDate, group.weekdays, horizon, maxNum+1)
+    .map(r=>({ group_id: group.id, ...r }));
+  if(!rows.length) return false;
+  const { error } = await sb.from('sessions').insert(rows);
+  if(error){ console.error('상시 회기 자동 확장 실패', error); return false; }
+  return true;
+}
+
+function participantsEnrolledAt(dateStr){
+  return participants.filter(p=>{
+    if(p.enrolled_from && p.enrolled_from > dateStr) return false;
+    if(p.enrolled_to   && p.enrolled_to   < dateStr) return false;
+    return true;
+  });
+}
+function participantsOfSession(s){
+  if(!s) return [];
+  const d = effectiveSessionDate(s) || s.session_date;
+  return participantsEnrolledAt(d);
+}
+function sessionCompletion(sid){
+  const s = sessions.find(x=>x.id===sid);
+  if(!s) return { cnt:0, total:0, done:false };
+  const enrolled = participantsOfSession(s);
+  const bucket = attendanceBySession[sid] || {};
+  const cnt = enrolled.filter(p=>bucket[p.id]!==undefined).length;
+  return { cnt, total: enrolled.length, done: enrolled.length>0 && cnt>=enrolled.length };
+}
+
+function statusBadge(s, c){
+  if(s.status==='cancelled_closed') return '<span class="pill cancelled">휴강 (종료)</span>';
+  if(s.status==='cancelled_makeup') return '<span class="pill makeup">휴강 (보강예정)</span>';
+  if(c.done) return '<span class="pill done">완료</span>';
+  if(c.cnt>0) return `<span class="pill partial">${c.cnt}/${c.total}</span>`;
+  return `<span class="pill todo">진행예정${c.total?' · '+c.total+'명':''}</span>`;
+}
+
+function renderSessions(){
+  const g = groups.find(x=>x.id===currentGroupId);
+  $('#session-count').textContent = sessions.length? `· ${sessions.length}` : '';
+  $('#btn-add-session').hidden = !(g?.group_type==='ongoing');
+  const host = $('#session-list-host');
+  if(!sessions.length){
+    host.innerHTML = '<div class="empty">아직 회기가 없습니다.<br>그룹 설정에서 요일/시작일 등을 확인하세요.</div>';
+    return;
+  }
+  const timeBit = g?.session_time ? ' · '+fmtTime(g.session_time) : '';
+  const today = todayISO();
+  host.innerHTML = `<div class="list">
+    ${sessions.map((s,i)=>{
+      const c = sessionCompletion(s.id);
+      const badge = statusBadge(s, c);
+      const cancelled = isSessionCancelled(s);
+      const hasRecords = c.cnt > 0;
+
+      const extras = [];
+      if(cancelled){
+        if(s.cancel_reason) extras.push('사유 · '+esc(REASON_LABEL[s.cancel_reason]||s.cancel_reason));
+        if(s.makeup_date) extras.push('→ 보강 '+fmtDateWD(s.makeup_date));
+        if(s.cancel_memo) extras.push(esc(s.cancel_memo));
+      }
+
+      let actions = '';
+      if(cancelled){
+        // 케이스 3: 휴강 — 보강 날짜가 있고 그 날짜가 도달했으면 출결 체크 활성화
+        const canCheck = s.status==='cancelled_makeup' && s.makeup_date && s.makeup_date <= today;
+        if(canCheck) actions += `<button class="btn sm" data-act="check" data-sid="${esc(s.id)}">출결 체크</button>`;
+        actions += `<button class="btn sm secondary" data-act="resume" data-sid="${esc(s.id)}">휴강 취소</button>`;
+      } else if(hasRecords){
+        // 케이스 2: 출결기록 있음 — 완료 표시 + 출결 보기
+        actions = `<button class="btn sm secondary" data-act="view" data-sid="${esc(s.id)}">출결 보기</button>`;
+      } else {
+        // 케이스 1: 진행예정 — 출결 체크 + 휴강
+        actions = `<button class="btn sm outline" data-act="cancel" data-sid="${esc(s.id)}">휴강</button>
+                   <button class="btn sm" data-act="check" data-sid="${esc(s.id)}">출결 체크</button>`;
+      }
+
+      return `<div class="list-card">
+        <div class="info">
+          <div class="name">${i+1}회기</div>
+          <div class="meta">${fmtDateWD(s.session_date)}${timeBit}</div>
+          ${extras.map(m=>`<div class="meta note">${m}</div>`).join('')}
+        </div>
+        <div class="actions">
+          ${badge}
+          ${actions}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+  host.onclick = (e)=>{
+    const btn = e.target.closest('button[data-sid]'); if(!btn) return;
+    const s = sessions.find(x=>x.id===btn.dataset.sid); if(!s) return;
+    const act = btn.dataset.act;
+    if(act==='check' || act==='view'){
+      const idx = sessions.findIndex(x=>x.id===s.id);
+      openAttendanceCheck(s, idx);
+    } else if(act==='cancel'){
+      openCancelDialog(s);
+    } else if(act==='resume'){
+      resumeSession(s);
+    }
+  };
+}
+
+/* ===== 출결 체크 뷰 ===== */
+function openAttendanceCheck(session, displayIdx){
+  if(session.status === 'cancelled_closed'){ toast('종료된 휴강 회기는 출결 체크를 할 수 없습니다',true); return; }
+  openSessionId = session.id;
+  attendanceDraft = {};
+  const enrolled = participantsOfSession(session);
+  for(const p of enrolled){
+    const existing = attendanceBySession[session.id]?.[p.id];
+    attendanceDraft[p.id] = {
+      status: existing?.status || 'absent',
+      parent_counseling: !!existing?.parent_counseling,
+    };
+  }
+  const g = groups.find(x=>x.id===currentGroupId);
+  const timeBit = g?.session_time ? ' · '+fmtTime(g.session_time) : '';
+  const n = (displayIdx!=null) ? displayIdx+1 : sessions.findIndex(x=>x.id===session.id)+1;
+  const isMakeup = session.status==='cancelled_makeup' && session.makeup_date;
+  const displayDate = isMakeup ? session.makeup_date : session.session_date;
+  const prefix = isMakeup ? `${n}회기 보강` : `${n}회기`;
+  $('#attendance-title').textContent = `${prefix} · ${fmtDateWD(displayDate)}${timeBit}`;
+  $('#sessions-list-view').hidden = true;
+  $('#sessions-attendance-view').hidden = false;
+  renderAttendance(session);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function closeAttendanceCheck(){
+  openSessionId = null;
+  attendanceDraft = {};
+  $('#sessions-list-view').hidden = false;
+  $('#sessions-attendance-view').hidden = true;
+}
+function renderAttendance(session){
+  const host = $('#attendance-host');
+  const enrolled = participantsOfSession(session);
+  const dateStr = effectiveSessionDate(session) || session.session_date;
+  if(!enrolled.length){
+    const hasAny = participants.length>0;
+    host.innerHTML = `<div class="empty">이 회기 날짜(${fmtDateWD(dateStr)})에 재적 중인 참여자가 없습니다.${hasAny?'<br>참여자의 재적 기간을 확인하세요.':'<br>먼저 참여자를 추가하세요.'}</div>`;
+    return;
+  }
+  host.innerHTML = `<div class="list">
+    ${enrolled.map(p=>{
+      const d = attendanceDraft[p.id] || {status:'absent', parent_counseling:false};
+      const bits = [];
+      if(p.age!=null) bits.push(p.age+'세');
+      if(p.school) bits.push(esc(p.school));
+      return `<div class="att-row" data-pid="${esc(p.id)}">
+        <div class="info">
+          <div class="name" style="font-weight:600;font-size:15px">${esc(p.name)}</div>
+          ${bits.length? `<div class="meta" style="font-size:12px;color:var(--muted);margin-top:2px">${bits.join(' · ')}</div>`:''}
+        </div>
+        <div class="controls">
+          <div class="toggle-group">
+            <button type="button" data-status="present" class="${d.status==='present'?'on present':''}">참석</button>
+            <button type="button" data-status="absent"  class="${d.status==='absent' ?'on absent':''}">결석</button>
+          </div>
+          <label class="check"><input type="checkbox" data-pc ${d.parent_counseling?'checked':''}/>부모상담</label>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+  host.onclick = (e)=>{
+    const btn = e.target.closest('button[data-status]');
+    const row = e.target.closest('.att-row');
+    if(btn && row){
+      attendanceDraft[row.dataset.pid].status = btn.dataset.status;
+      renderAttendance(session);
+    }
+  };
+  host.onchange = (e)=>{
+    const cb = e.target.closest('input[data-pc]');
+    const row = e.target.closest('.att-row');
+    if(cb && row) attendanceDraft[row.dataset.pid].parent_counseling = cb.checked;
+  };
+}
+async function saveAttendance(){
+  if(!openSessionId) return;
+  const session = sessions.find(x=>x.id===openSessionId); if(!session) return;
+  const enrolled = participantsOfSession(session);
+  if(!enrolled.length){ toast('재적 참여자가 없습니다',true); return; }
+  const rows = enrolled.map(p=>{
+    const d = attendanceDraft[p.id] || {status:'absent', parent_counseling:false};
+    return {
+      session_id: openSessionId,
+      participant_id: p.id,
+      status: d.status || 'absent',
+      parent_counseling: !!d.parent_counseling,
+    };
+  });
+  const { error } = await sb.from('attendance').upsert(rows, { onConflict:'session_id,participant_id' });
+  if(error){ toast('저장 실패: '+error.message,true); return; }
+  toast('출결이 저장되었습니다');
+  await loadSessionsAndAttendance();
+  closeAttendanceCheck();
+  renderSessions();
+  renderStats();
+}
+
+/* ===== 회기 수동 추가 ===== */
+function openSessionDialog(){
+  if(!currentGroupId) return;
+  const dlg = $('#dlg-session'), form = $('#form-session');
+  form.session_date.value = todayISO();
+  dlg.showModal();
+  setTimeout(()=>form.session_date.focus(), 50);
+  form.onsubmit = async (e)=>{
+    if(e.submitter?.value !== 'save') return;
+    e.preventDefault();
+    const date = form.session_date.value;
+    if(!date){ toast('날짜를 입력하세요',true); return; }
+    const maxN = sessions.reduce((m,s)=>Math.max(m,s.session_number||0),0);
+    const { error } = await sb.from('sessions').insert({
+      group_id: currentGroupId, session_number: maxN+1, session_date: date,
+    });
+    if(error){ toast('회기 추가 실패: '+error.message,true); return; }
+    dlg.close(); toast('회기가 추가되었습니다');
+    await loadSessionsAndAttendance();
+    renderSessions();
+    renderStats();
+  };
+}
+
+/* ===== 휴강 / 휴강 취소 ===== */
+function openCancelDialog(session){
+  if(!session) return;
+  const dlg = $('#dlg-cancel'), form = $('#form-cancel');
+  const g = groups.find(x=>x.id===currentGroupId);
+  const timeBit = g?.session_time ? ' · '+fmtTime(g.session_time) : '';
+  const n = sessions.findIndex(x=>x.id===session.id)+1;
+  $('#dlg-cancel-title').textContent = isSessionCancelled(session) ? '휴강 정보 수정' : '회기 휴강';
+  $('#cancel-session-info').textContent = `${n}회기 · ${fmtDateWD(session.session_date)}${timeBit}`;
+  form.reason.value = session.cancel_reason || 'holiday';
+  form.makeup_date.value = session.makeup_date || '';
+  form.memo.value = session.cancel_memo || '';
+  dlg.showModal();
+  form.onsubmit = async (e)=>{
+    if(e.submitter?.value !== 'save') return;
+    e.preventDefault();
+    const makeupDate = form.makeup_date.value || null;
+    const payload = {
+      status: makeupDate ? 'cancelled_makeup' : 'cancelled_closed',
+      cancel_reason: form.reason.value,
+      cancel_memo: form.memo.value.trim() || null,
+      makeup_date: makeupDate,
+    };
+    const { error } = await sb.from('sessions').update(payload).eq('id', session.id);
+    if(error){ toast('저장 실패: '+error.message,true); return; }
+    dlg.close(); toast('저장됨');
+    await loadSessionsAndAttendance();
+    renderSessions();
+    renderStats();
+  };
+}
+
+async function resumeSession(session){
+  if(!session) return;
+  if(!confirm('이 회기의 휴강을 취소하고 진행예정으로 되돌릴까요?\n(사유·메모·보강 날짜가 지워집니다)')) return;
+  const { error } = await sb.from('sessions').update({
+    status: 'scheduled',
+    cancel_reason: null,
+    cancel_memo: null,
+    makeup_date: null,
+  }).eq('id', session.id);
+  if(error){ toast('저장 실패: '+error.message,true); return; }
+  toast('휴강이 취소되었습니다');
+  await loadSessionsAndAttendance();
+  renderSessions();
+  renderStats();
+}
+
+/* ===== 통계 ===== */
+function computeParticipantStat(p){
+  let present=0, absent=0, counsel=0;
+  for(const s of sessions){
+    const a = attendanceBySession[s.id]?.[p.id];
+    if(!a) continue;
+    if(a.status==='present') present++;
+    else if(a.status==='absent') absent++;
+    if(a.parent_counseling) counsel++;
+  }
+  const recorded = present + absent;
+  const rate = recorded>0 ? Math.round(present/recorded*1000)/10 : 0;
+  return { present, absent, counsel, recorded, rate };
+}
+function renderStats(){
+  const host = $('#stats-host');
+  if(!host) return;
+  if(!sessions.length){
+    host.innerHTML = '<div class="empty">회기가 없어 통계를 표시할 수 없습니다.</div>';
+    return;
+  }
+  const total = sessions.length;
+  const completed = sessions.filter(s=>sessionCompletion(s.id).done).length;
+  const cancelled = sessions.filter(s=>isSessionCancelled(s)).length;
+  const summary = `<div class="stats-summary">
+    <div class="stat-box"><div class="stat-label">총 회기</div><div class="stat-value">${total}</div></div>
+    <div class="stat-box"><div class="stat-label">완료</div><div class="stat-value">${completed}</div></div>
+    <div class="stat-box"><div class="stat-label">휴강</div><div class="stat-value">${cancelled}</div></div>
+  </div>`;
+  let body;
+  if(!participants.length){
+    body = '<div class="empty">참여자가 없어 참여자별 통계를 표시할 수 없습니다.</div>';
+  } else {
+    body = `<div class="section-title" style="margin-top:18px"><h2>참여자별 출결</h2></div>
+      <div class="list">
+        ${participants.map(p=>{
+          const st = computeParticipantStat(p);
+          const rateText = st.recorded ? st.rate+'%' : '기록 없음';
+          return `<div class="stat-row">
+            <div class="name">${esc(p.name)}</div>
+            <div class="stats-meta">출석 <b>${st.present}</b> · 결석 <b>${st.absent}</b> · 부모상담 <b>${st.counsel}</b></div>
+            <div class="stats-bar"><div class="stats-bar-fill" style="width:${st.rate}%"></div></div>
+            <div class="stats-rate">출석률 ${rateText}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="stats-actions">
+        <button class="btn" id="btn-download-csv">CSV 다운로드</button>
+      </div>`;
+  }
+  host.innerHTML = summary + body;
+  const btn = $('#btn-download-csv');
+  if(btn) btn.addEventListener('click', downloadStatsCSV);
+}
+function csvField(v){
+  const s = (v==null) ? '' : String(v);
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+function sessionStatusLabel(s){
+  if(s.status==='cancelled_closed') return '휴강(종료)';
+  if(s.status==='cancelled_makeup') return '휴강(보강예정)';
+  const c = sessionCompletion(s.id);
+  if(c.done) return '완료';
+  if(c.cnt>0) return `진행중(${c.cnt}/${c.total})`;
+  return '예정';
+}
+function attendanceCell(s, p){
+  const a = attendanceBySession[s.id]?.[p.id];
+  if(!a) return '';
+  const base = a.status==='present' ? '참석' : a.status==='absent' ? '결석' : '';
+  return a.parent_counseling ? `${base}(상담)` : base;
+}
+function downloadStatsCSV(){
+  const g = groups.find(x=>x.id===currentGroupId);
+  if(!g) return;
+  if(!sessions.length || !participants.length){ toast('다운로드할 데이터가 없습니다',true); return; }
+  const rows = [];
+  rows.push(['회기','날짜','상태', ...participants.map(p=>p.name)]);
+  sessions.forEach((s, i)=>{
+    rows.push([
+      i+1,
+      s.session_date,
+      sessionStatusLabel(s),
+      ...participants.map(p=>attendanceCell(s, p)),
+    ]);
+  });
+  const stats = participants.map(p=>computeParticipantStat(p));
+  rows.push(['','','출석 합계', ...stats.map(x=>x.present)]);
+  rows.push(['','','결석 합계', ...stats.map(x=>x.absent)]);
+  rows.push(['','','부모상담', ...stats.map(x=>x.counsel)]);
+  rows.push(['','','출석률', ...stats.map(x=>x.recorded ? x.rate+'%' : '-')]);
+  const csv = '﻿' + rows.map(r=>r.map(csvField).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${g.name}_출결_${todayISO()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+/* ===== 이벤트 ===== */
+$('#btn-add-group').addEventListener('click', ()=>openGroupDialog(null));
+$('#btn-add-participant').addEventListener('click', ()=>openParticipantDialog(null));
+$('#btn-add-session').addEventListener('click', openSessionDialog);
+$('#btn-back-header').addEventListener('click', navigateHome);
+$('#btn-back-to-sessions').addEventListener('click', closeAttendanceCheck);
+$('#btn-cancel-attendance').addEventListener('click', closeAttendanceCheck);
+$('#btn-save-attendance').addEventListener('click', saveAttendance);
+
+/* ===== 초기화 ===== */
+(async function init(){
+  if(!SUPABASE_KEY || SUPABASE_KEY.startsWith('PASTE_')){
+    setStatus('⚠ Supabase 키가 설정되지 않았습니다.', true); return;
+  }
+  try{
+    await loadGroups();
+    setStatus('');
+    handleRoute();
+  }catch(e){
+    setStatus('초기 로딩 실패: '+(e.message||e), true);
+  }
+})();
+</script>
+</body>
+</html>
