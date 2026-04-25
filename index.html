@@ -6,7 +6,6 @@
 <title>출결이</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
   :root{
     --sage-50:#f4f8ef; --sage-100:#e8f0e0; --sage-200:#cddcbf;
@@ -316,29 +315,6 @@
 const SUPABASE_URL = 'https://mskeccolgyenazbygufc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_AaRyr5-D3nfQNR9anSL0UA_N_k13Xba';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-/* ===== EmailJS =====
-   가입 후 https://dashboard.emailjs.com 에서 값 채우세요.
-   - PUBLIC_KEY: Account → General → Public Key
-   - SERVICE_ID: Email Services → 연결한 서비스의 ID
-   - TEMPLATE_ID: Email Templates → 만든 템플릿의 ID
-   - TO_EMAIL  : 통계 요약을 받을 관리자 본인 이메일
-   템플릿에서 사용 가능한 변수 (모두 string):
-     {{to_email}} {{group_name}} {{manager}} {{report_date}}
-     {{total_sessions}} {{completed_sessions}} {{cancelled_sessions}}
-     {{participants_count}} {{stats_text}}
-*/
-const EMAILJS_PUBLIC_KEY  = 'PASTE_EMAILJS_PUBLIC_KEY';
-const EMAILJS_SERVICE_ID  = 'PASTE_EMAILJS_SERVICE_ID';
-const EMAILJS_TEMPLATE_ID = 'PASTE_EMAILJS_TEMPLATE_ID';
-const EMAILJS_TO_EMAIL    = 'PASTE_ADMIN_EMAIL';
-function isEmailJSConfigured(){
-  return [EMAILJS_PUBLIC_KEY, EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_TO_EMAIL]
-    .every(v => v && !v.startsWith('PASTE_'));
-}
-if(typeof emailjs !== 'undefined' && isEmailJSConfigured()){
-  emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-}
 
 /* ===== 상태 ===== */
 let groups = [];
@@ -1111,37 +1087,6 @@ function downloadStatsCSV(){
   a.click();
   document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url), 1000);
-  sendStatsSummaryEmail(g, stats);
-}
-
-async function sendStatsSummaryEmail(g, stats){
-  if(!isEmailJSConfigured()) return;
-  if(typeof emailjs === 'undefined'){ console.warn('EmailJS SDK 미로딩'); return; }
-  const total = sessions.length;
-  const completed = sessions.filter(s=>sessionCompletion(s.id).done).length;
-  const cancelled = sessions.filter(s=>isSessionCancelled(s)).length;
-  const lines = participants.map((p, i)=>{
-    const x = stats[i];
-    const rate = x.recorded ? x.rate+'%' : '-';
-    return `- ${p.name}: 출석 ${x.present} / 결석 ${x.absent} / 부모상담 ${x.counsel} / 출석률 ${rate}`;
-  });
-  try{
-    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-      to_email: EMAILJS_TO_EMAIL,
-      group_name: g.name,
-      manager: g.manager || '',
-      report_date: todayISO(),
-      total_sessions: String(total),
-      completed_sessions: String(completed),
-      cancelled_sessions: String(cancelled),
-      participants_count: String(participants.length),
-      stats_text: lines.join('\n'),
-    });
-    toast('통계 요약 메일을 발송했습니다');
-  } catch(err){
-    console.error('EmailJS 전송 실패', err);
-    toast('메일 발송 실패: '+(err?.text||err?.message||err), true);
-  }
 }
 
 /* ===== 이벤트 ===== */
