@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>출결이</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -81,14 +81,26 @@
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--sage-700);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:100;max-width:calc(100% - 40px);text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
 
-  /* 모달 — div 기반 오버레이. visualViewport 기반으로 위치/크기 결정 */
-  .modal{position:fixed;left:0;right:0;
-    top:var(--vv-top,0);height:var(--vv-h,100vh);
-    z-index:100;display:flex;align-items:center;justify-content:center;padding:12px}
+  /* 모달 — div 기반 오버레이.
+     - position:fixed; inset:0 으로 viewport 전체 덮음
+     - top/height 는 JS 가 visualViewport 기준으로 덮어씀 (iOS Safari 대응)
+     - padding 은 safe-area 고려 (iPhone 노치/홈 인디케이터) */
+  .modal{position:fixed;inset:0;
+    top:var(--vv-top,0);height:var(--vv-h,100dvh);
+    z-index:100;display:flex;align-items:center;justify-content:center;
+    padding:16px;
+    padding-top:max(16px, env(safe-area-inset-top));
+    padding-bottom:max(16px, env(safe-area-inset-bottom));
+    padding-left:max(16px, env(safe-area-inset-left));
+    padding-right:max(16px, env(safe-area-inset-right))}
   .modal[hidden]{display:none}
   .modal-backdrop{position:absolute;inset:0;background:rgba(36,48,42,.4);cursor:pointer}
   .modal-content{position:relative;background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(36,48,42,.18);
-    max-width:480px;width:100%;max-height:100%;
+    width:min(92vw, 480px);
+    max-height:calc(100vh - 32px);
+    max-height:calc(100svh - 32px);
+    max-height:calc(100dvh - 32px);
+    max-height:100%;
     display:flex;flex-direction:column;overflow:hidden}
   .modal-content > form{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;width:100%;margin:0}
   .dlg-head{padding:16px 20px;border-bottom:1px solid var(--line);font-weight:700;color:var(--sage-700);font-size:15px;flex-shrink:0}
@@ -149,8 +161,14 @@
     .att-row .controls{width:100%;justify-content:space-between}
 
     /* 다이얼로그 — 모바일에서 가능한 한 화면에 꽉 차게 */
-    .modal{padding:8px}
-    .modal-content{max-width:none;border-radius:12px}
+    .modal{
+      padding:12px;
+      padding-top:max(12px, env(safe-area-inset-top));
+      padding-bottom:max(12px, env(safe-area-inset-bottom));
+      padding-left:max(12px, env(safe-area-inset-left));
+      padding-right:max(12px, env(safe-area-inset-right))
+    }
+    .modal-content{width:min(96vw, 480px);border-radius:12px}
     .dlg-head{padding:14px 16px;font-size:14.5px}
     .dlg-body{padding:14px 16px;gap:10px}
     .dlg-foot{padding:10px 12px}
