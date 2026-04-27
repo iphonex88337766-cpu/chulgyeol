@@ -82,7 +82,10 @@
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
 
   dialog{border:0;border-radius:14px;padding:0;background:#fff;box-shadow:0 20px 60px rgba(36,48,42,.18);max-width:480px;width:calc(100% - 24px);
-    max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);
+    /* --dlg-max-h 는 JS 가 visualViewport 기준으로 주입. 미지원 브라우저는 svh 폴백 */
+    max-height:calc(100vh - 24px);
+    max-height:calc(100svh - 24px);
+    max-height:var(--dlg-max-h, calc(100svh - 24px));
     margin:auto;
     display:flex;flex-direction:column;overflow:hidden}
   dialog:not([open]){display:none}
@@ -371,6 +374,26 @@
 const SUPABASE_URL = 'https://mskeccolgyenazbygufc.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_AaRyr5-D3nfQNR9anSL0UA_N_k13Xba';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ===== 모바일 다이얼로그 높이 보정
+   iOS Safari 등에서 100vh/100dvh 가 URL 바를 포함한 layout viewport 를
+   가리키는 경우 다이얼로그가 visible 영역을 초과해 버튼이 잘림.
+   visualViewport.height (실제 보이는 영역) 을 직접 측정해 CSS 변수로 주입. */
+function updateDialogMaxHeight(){
+  const h = (window.visualViewport?.height || window.innerHeight) - 24;
+  document.documentElement.style.setProperty('--dlg-max-h', h + 'px');
+}
+updateDialogMaxHeight();
+window.addEventListener('resize', updateDialogMaxHeight);
+window.addEventListener('orientationchange', updateDialogMaxHeight);
+window.visualViewport?.addEventListener('resize', updateDialogMaxHeight);
+window.visualViewport?.addEventListener('scroll', updateDialogMaxHeight);
+// 다이얼로그가 열릴 때마다 한 번 더 갱신 (URL 바 상태 변화 대응)
+const _origShowModal = HTMLDialogElement.prototype.showModal;
+HTMLDialogElement.prototype.showModal = function(){
+  updateDialogMaxHeight();
+  return _origShowModal.call(this);
+};
 
 /* ===== 상태 ===== */
 let groups = [];
