@@ -143,7 +143,8 @@
 <header>
   <button class="btn-icon" id="btn-back-header" hidden aria-label="뒤로">←</button>
   <h1 id="header-title"><span class="dot"></span>출결이</h1>
-  <button class="btn" id="btn-add-group">＋ 그룹 추가</button>
+  <button class="btn ghost sm" id="btn-logout" hidden>로그아웃</button>
+  <button class="btn" id="btn-add-group" hidden>＋ 그룹 추가</button>
 </header>
 <div class="status" id="status"></div>
 <main>
@@ -283,6 +284,22 @@
   </form>
 </dialog>
 
+<!-- 인증 모달 -->
+<dialog id="dlg-auth">
+  <form method="dialog" id="form-auth" autocomplete="on">
+    <div class="dlg-head" id="dlg-auth-title">로그인</div>
+    <div class="dlg-body">
+      <label class="fld">이메일<input type="email" name="email" required autocomplete="email" /></label>
+      <label class="fld">비밀번호<input type="password" name="password" required minlength="6" autocomplete="current-password" /></label>
+      <div class="hint-text" id="auth-hint">계정이 없다면 아래 회원가입을 누르세요.</div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn ghost" id="btn-auth-toggle">회원가입</button>
+      <button value="save" class="btn" id="btn-auth-submit">로그인</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- 휴강 모달 -->
 <dialog id="dlg-cancel">
   <form method="dialog" id="form-cancel" autocomplete="off">
@@ -325,6 +342,8 @@ let currentGroupId = null;
 let currentTab = 'participants';
 let openSessionId = null;
 let attendanceDraft = {}; // participant_id → { status, parent_counseling }
+let currentUserId = null; // null = 로그아웃 상태
+let authMode = 'signin'; // 'signin' | 'signup'
 
 /* ===== 유틸 ===== */
 const $ = (s,r=document)=>r.querySelector(s);
@@ -1098,18 +1117,109 @@ $('#btn-back-to-sessions').addEventListener('click', closeAttendanceCheck);
 $('#btn-cancel-attendance').addEventListener('click', closeAttendanceCheck);
 $('#btn-save-attendance').addEventListener('click', saveAttendance);
 
+/* ===== 인증 ===== */
+function setAuthMode(mode){
+  authMode = mode;
+  $('#dlg-auth-title').textContent = mode==='signin' ? '로그인' : '회원가입';
+  $('#btn-auth-submit').textContent = mode==='signin' ? '로그인' : '회원가입';
+  $('#btn-auth-toggle').textContent = mode==='signin' ? '회원가입' : '로그인으로';
+  $('#auth-hint').textContent = mode==='signin'
+    ? '계정이 없다면 아래 회원가입을 누르세요.'
+    : '회원가입 후 이메일 인증이 필요할 수 있습니다.';
+}
+function openAuthDialog(){
+  const dlg = $('#dlg-auth');
+  if(!dlg.open) dlg.showModal();
+}
+// Esc 로 닫히지 않게 (인증 게이트)
+$('#dlg-auth').addEventListener('cancel', e=>e.preventDefault());
+$('#btn-auth-toggle').addEventListener('click', ()=>{
+  setAuthMode(authMode==='signin' ? 'signup' : 'signin');
+});
+$('#form-auth').addEventListener('submit', async (e)=>{
+  if(e.submitter?.value !== 'save') return;
+  e.preventDefault();
+  const form = e.target;
+  const email = form.email.value.trim();
+  const password = form.password.value;
+  if(!email || !password) return;
+  $('#btn-auth-submit').disabled = true;
+  try{
+    if(authMode==='signin'){
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if(error) throw error;
+    } else {
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if(error) throw error;
+      if(!data.session){
+        toast('이메일로 인증 링크를 보냈습니다. 인증 후 로그인하세요.');
+        setAuthMode('signin');
+        return;
+      }
+    }
+    // 성공 → onAuthStateChange 가 UI 처리
+  }catch(err){
+    toast((authMode==='signin'?'로그인':'회원가입')+' 실패: '+(err.message||err), true);
+  }finally{
+    $('#btn-auth-submit').disabled = false;
+  }
+});
+$('#btn-logout').addEventListener('click', async ()=>{
+  if(!confirm('로그아웃할까요?')) return;
+  await sb.auth.signOut();
+});
+
+async function handleSignedIn(session){
+  currentUserId = session.user.id;
+  $('#dlg-auth').close();
+  $('#form-auth').reset();
+  $('#btn-logout').hidden = false;
+  $('#btn-add-group').hidden = false;
+  setStatus('');
+  try{
+    await loadGroups();
+    handleRoute();
+  }catch(e){
+    setStatus('초기 로딩 실패: '+(e.message||e), true);
+  }
+}
+function handleSignedOut(){
+  currentUserId = null;
+  groups = []; participants = []; sessions = []; attendanceBySession = {};
+  currentGroupId = null;
+  closeAttendanceCheck();
+  $('#group-list-host').innerHTML = '';
+  $('#group-count').textContent = '';
+  $('#participant-list-host').innerHTML = '';
+  $('#session-list-host').innerHTML = '';
+  $('#stats-host').innerHTML = '';
+  $('#view-home').classList.add('active');
+  $('#view-group').classList.remove('active');
+  $('#btn-back-header').hidden = true;
+  $('#btn-add-group').hidden = true;
+  $('#btn-logout').hidden = true;
+  $('#header-title').innerHTML = '<span class="dot"></span>출결이';
+  setStatus('');
+  setAuthMode('signin');
+  openAuthDialog();
+}
+
 /* ===== 초기화 ===== */
 (async function init(){
   if(!SUPABASE_KEY || SUPABASE_KEY.startsWith('PASTE_')){
     setStatus('⚠ Supabase 키가 설정되지 않았습니다.', true); return;
   }
-  try{
-    await loadGroups();
-    setStatus('');
-    handleRoute();
-  }catch(e){
-    setStatus('초기 로딩 실패: '+(e.message||e), true);
-  }
+  setAuthMode('signin');
+  sb.auth.onAuthStateChange((event, session)=>{
+    const newUid = session?.user?.id || null;
+    if(newUid && newUid !== currentUserId){
+      handleSignedIn(session);
+    } else if(!newUid && currentUserId !== null){
+      handleSignedOut();
+    } else if(!newUid && event === 'INITIAL_SESSION'){
+      handleSignedOut();
+    }
+  });
 })();
 </script>
 </body>

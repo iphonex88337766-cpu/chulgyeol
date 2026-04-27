@@ -16,6 +16,7 @@ drop table if exists public.groups       cascade;
 -- ----------------------------
 create table public.groups (
   id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null references auth.users(id) on delete cascade default auth.uid(),
   name           text not null,
   manager        text,                         -- 담당자
   group_type     text not null default 'fixed'  -- 기간제(fixed) / 상시(ongoing)
@@ -29,6 +30,7 @@ create table public.groups (
 
 create table public.participants (
   id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references auth.users(id) on delete cascade default auth.uid(),
   group_id      uuid not null references public.groups(id) on delete cascade,
   name          text not null,
   age           int,
@@ -41,6 +43,7 @@ create table public.participants (
 
 create table public.sessions (
   id             uuid primary key default gen_random_uuid(),
+  user_id        uuid not null references auth.users(id) on delete cascade default auth.uid(),
   group_id       uuid not null references public.groups(id) on delete cascade,
   session_number int  not null,  -- 1회기, 2회기, ...
   session_date   date not null,
@@ -55,6 +58,7 @@ create table public.sessions (
 
 create table public.attendance (
   id                uuid primary key default gen_random_uuid(),
+  user_id           uuid not null references auth.users(id) on delete cascade default auth.uid(),
   session_id        uuid not null references public.sessions(id)     on delete cascade,
   participant_id    uuid not null references public.participants(id) on delete cascade,
   status            text not null default 'absent' check (status in ('present','absent')),
@@ -71,9 +75,13 @@ create index idx_sessions_group_number    on public.sessions(group_id, session_n
 create index idx_sessions_group_date      on public.sessions(group_id, session_date);
 create index idx_attendance_session       on public.attendance(session_id);
 create index idx_attendance_participant   on public.attendance(participant_id);
+create index idx_groups_user              on public.groups(user_id);
+create index idx_participants_user        on public.participants(user_id);
+create index idx_sessions_user            on public.sessions(user_id);
+create index idx_attendance_user          on public.attendance(user_id);
 
 -- ----------------------------
--- 3) RLS (anon 공개 정책 — 개인용 도구 가정)
+-- 3) RLS (사용자별 격리 — authenticated 만, 본인 row 만)
 -- ----------------------------
 alter table public.groups       enable row level security;
 alter table public.participants enable row level security;
@@ -85,7 +93,14 @@ declare t text;
 begin
   foreach t in array array['groups','participants','sessions','attendance'] loop
     execute format('drop policy if exists anon_all on public.%I', t);
-    execute format('create policy anon_all on public.%I for all to anon using (true) with check (true)', t);
+    execute format('drop policy if exists own_rows on public.%I', t);
+    execute format($p$
+      create policy own_rows on public.%I
+      for all
+      to authenticated
+      using (user_id = auth.uid())
+      with check (user_id = auth.uid())
+    $p$, t);
   end loop;
 end$$;
 
