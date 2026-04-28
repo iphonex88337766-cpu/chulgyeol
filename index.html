@@ -1359,6 +1359,7 @@ function handleSignedOut(){
   setAuthMode('signin');
   sb.auth.onAuthStateChange((event, session)=>{
     const newUid = session?.user?.id || null;
+    console.log('auth event', event, 'newUid:', session?.user?.id, 'currentUserId:', currentUserId);
     if(newUid){
       if(newUid !== currentUserId || isModalOpen('dlg-auth')){
         handleSignedIn(session);
