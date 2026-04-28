@@ -1359,11 +1359,11 @@ function handleSignedOut(){
   setAuthMode('signin');
   sb.auth.onAuthStateChange((event, session)=>{
     const newUid = session?.user?.id || null;
-    if(newUid && newUid !== currentUserId){
-      handleSignedIn(session);
-    } else if(!newUid && currentUserId !== null){
-      handleSignedOut();
-    } else if(!newUid && event === 'INITIAL_SESSION'){
+    if(newUid){
+      if(newUid !== currentUserId || isModalOpen('dlg-auth')){
+        handleSignedIn(session);
+      }
+    } else if(currentUserId !== null || event === 'INITIAL_SESSION'){
       handleSignedOut();
     }
   });
