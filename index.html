@@ -1289,8 +1289,11 @@ $('#form-auth').addEventListener('submit', async (e)=>{
   $('#btn-auth-submit').disabled = true;
   try{
     if(authMode==='signin'){
-      const { error } = await sb.auth.signInWithPassword({ email, password });
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
       if(error) throw error;
+      if(data?.session?.user?.id){
+        await handleSignedIn(data.session);
+      }
     } else {
       // emailRedirectTo: 인증 메일 링크가 현재 사이트로 돌아오도록 명시
       const { data, error } = await sb.auth.signUp({
@@ -1303,8 +1306,8 @@ $('#form-auth').addEventListener('submit', async (e)=>{
         setAuthMode('signin');
         return;
       }
+      await handleSignedIn(data.session);
     }
-    // 성공 → onAuthStateChange 가 UI 처리
   }catch(err){
     toast((authMode==='signin'?'로그인':'회원가입')+' 실패: '+(err.message||err), true);
   }finally{
@@ -1317,7 +1320,10 @@ $('#btn-logout').addEventListener('click', async ()=>{
 });
 
 async function handleSignedIn(session){
-  currentUserId = session.user.id;
+  const uid = session?.user?.id;
+  if(!uid) return;
+  if(currentUserId === uid && !isModalOpen('dlg-auth')) return;
+  currentUserId = uid;
   closeModal('dlg-auth');
   $('#form-auth').reset();
   $('#btn-logout').hidden = false;
@@ -1358,21 +1364,20 @@ function handleSignedOut(){
   }
   setAuthMode('signin');
   sb.auth.onAuthStateChange((event, session)=>{
-    const newUid = session?.user?.id || null;
     console.log('auth event', event, 'newUid:', session?.user?.id, 'currentUserId:', currentUserId);
-    const signedInEvents = ['SIGNED_IN','TOKEN_REFRESHED','USER_UPDATED'];
-    if(newUid && signedInEvents.includes(event) && isModalOpen('dlg-auth')){
+    if(session?.user?.id){
       handleSignedIn(session);
-      return;
-    }
-    if(newUid){
-      if(newUid !== currentUserId){
-        handleSignedIn(session);
-      }
     } else if(currentUserId !== null || event === 'INITIAL_SESSION'){
       handleSignedOut();
     }
   });
+  // 새로고침 시 세션 복원
+  const { data: { session } } = await sb.auth.getSession();
+  if(session?.user?.id){
+    await handleSignedIn(session);
+  } else if(currentUserId === null){
+    handleSignedOut();
+  }
 })();
 </script>
 </body>
