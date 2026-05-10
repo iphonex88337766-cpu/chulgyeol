@@ -1300,7 +1300,7 @@ $('#form-auth').addEventListener('submit', async (e)=>{
       // emailRedirectTo: 인증 메일 링크가 현재 사이트로 돌아오도록 명시
       const { data, error } = await sb.auth.signUp({
         email, password,
-        options: { emailRedirectTo: window.location.origin }
+        options: { emailRedirectTo: location.origin + location.pathname }
       });
       if(error) throw error;
       if(!data.session){
@@ -1366,7 +1366,6 @@ function handleSignedOut(){
   }
   setAuthMode('signin');
   sb.auth.onAuthStateChange(async (event, session)=>{
-    console.log('auth event', event, 'newUid:', session?.user?.id, 'currentUserId:', currentUserId);
     if(session?.user?.id){
       await handleSignedIn(session);
     } else if(currentUserId !== null || event === 'INITIAL_SESSION'){
