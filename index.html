@@ -8,7 +8,6 @@
 <meta http-equiv="Expires" content="0" />
 <title>출결이</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --sage-50:#f4f8ef; --sage-100:#e8f0e0; --sage-200:#cddcbf;
@@ -418,6 +417,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ===== Supabase ===== */
 const SUPABASE_URL = 'https://mskeccolgyenazbygufc.supabase.co';
@@ -1377,6 +1377,8 @@ function handleSignedOut(){
   const { data: { session } } = await sb.auth.getSession();
   if(session?.user?.id){
     await handleSignedIn(session);
+  } else if(!currentUserId){
+    handleSignedOut();
   }
 })();
 </script>
