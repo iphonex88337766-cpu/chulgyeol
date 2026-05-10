@@ -1293,6 +1293,8 @@ $('#form-auth').addEventListener('submit', async (e)=>{
       if(error) throw error;
       if(data?.session?.user?.id){
         await handleSignedIn(data.session);
+      } else {
+        throw new Error('이메일 인증이 필요합니다. 받은편지함을 확인해주세요.');
       }
     } else {
       // emailRedirectTo: 인증 메일 링크가 현재 사이트로 돌아오도록 명시
@@ -1363,20 +1365,18 @@ function handleSignedOut(){
     setStatus('⚠ Supabase 키가 설정되지 않았습니다.', true); return;
   }
   setAuthMode('signin');
-  sb.auth.onAuthStateChange((event, session)=>{
+  sb.auth.onAuthStateChange(async (event, session)=>{
     console.log('auth event', event, 'newUid:', session?.user?.id, 'currentUserId:', currentUserId);
     if(session?.user?.id){
-      handleSignedIn(session);
+      await handleSignedIn(session);
     } else if(currentUserId !== null || event === 'INITIAL_SESSION'){
       handleSignedOut();
     }
   });
-  // 새로고침 시 세션 복원
+  // 새로고침 시 세션 복원 (INITIAL_SESSION 이전에 세션이 있을 경우 대비)
   const { data: { session } } = await sb.auth.getSession();
   if(session?.user?.id){
     await handleSignedIn(session);
-  } else if(currentUserId === null){
-    handleSignedOut();
   }
 })();
 </script>
